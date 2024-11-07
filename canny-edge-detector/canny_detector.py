@@ -1,5 +1,5 @@
-import numpy as np
 import filter
+import numpy as np
 
 
 def filter_image(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
@@ -121,6 +121,68 @@ def cut_off_supression(gradient: np.ndarray, theta: np.ndarray) -> np.ndarray:
 
 
 def double_theshold(gradient: np.ndarray) -> np.ndarray:
+    """Thresholds the image gradient using two thresholds that are based on the strongest pixel intensity within the gradient.
+    The high threshold is 20% of the highest intensity pixel and the low threshold is 10% of the highest intensity pixel.
+
+    Args:
+        gradient: Numpy array containing the gradient of the image
+
+
+    Returns: The thresholded image as a numpy array.
+
+    """
+    thresholded = np.zeros_like(gradient)
     max_pixel = gradient.max()
     high = max_pixel * 0.2
     low = max_pixel * 0.1
+
+    for row in range(1, gradient.shape[0] - 1):
+        for col in range(1, gradient.shape[1] - 1):
+            if gradient[row, col] > high:
+                thresholded[row, col] = 255
+            elif gradient[row, col] <= high and gradient[row, col] > low:
+                thresholded[row, col] = gradient[row, col]
+
+    return thresholded
+
+
+def hysteresis(thresholded_gradient: np.ndarray) -> np.ndarray:
+    """Locates weak edges within the gradient and looks at its 8 neighbors to determine if should be a strong edge. If not the edge is suppressed.
+
+    Args:
+        thresholded_gradient: The gradient of the image after undergoing cut-off suppression and double thresholding
+
+    Returns: A numpy array containing the image gradient showing the edges of the image.
+
+    """
+    result = np.copy(thresholded_gradient)
+
+    for row in range(1, result.shape[0] - 1):
+        for col in range(1, result.shape[1] - 1):
+            current = result[row, col]
+
+            if current == 0 or current == 255:
+                continue
+
+            neighborhood = get_neighborhood_3x3(result, row, col)
+
+            if 255 in neighborhood:
+                result[row, col] = 255
+            else:
+                result[row, col] = 0
+
+    return result
+
+
+def get_neighborhood_3x3(arr: np.ndarray, x: int, y: int) -> np.ndarray:
+    """Gets a 3x3 neighborhood based on a location within an array
+
+    Args:
+        arr: Numpy array containing the data.
+        x: The x coordinate of the location.
+        y: The y coordinate of the location.
+
+    Returns: A 3x3 numpy array containing the neighborhood of the location within arr specified by the location [x, y].
+
+    """
+    return arr[x - 1 : x + 2, y - 1 : y + 2]
